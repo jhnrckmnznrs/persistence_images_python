@@ -50,10 +50,10 @@ def test_batch_spacing_and_cli(tmp_path):
         np.testing.assert_allclose(result[i],stable_persistence_image(
             points[i],b,20,25,.2*[1,2][i],.3*[1,2][i],weight_scale=.7),atol=1e-13)
     inp=tmp_path/"diagrams"; inp.mkdir()
-    (inp/"a.csv").write_text("0.25,0.75\\n0.20,0.20\\n")
-    (inp/"b.csv").write_text("0.5,1.0\\n")
+    (inp/"a.csv").write_text("0.25,0.75\n0.20,0.20\n")
+    (inp/"b.csv").write_text("0.5,1.0\n")
     spacing=tmp_path/"spacing.csv"
-    spacing.write_text("filename,other,spacing\\na.tif,ok,1.0\\nb.tif,ok,2.0\\n")
+    spacing.write_text("filename,other,spacing\na.tif,ok,1.0\nb.tif,ok,2.0\n")
     outputs=[]
     for flag in ([],["--stream"]):
         out=tmp_path/("stream.csv" if flag else "batch.csv")
