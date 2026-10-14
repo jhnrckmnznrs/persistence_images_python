@@ -114,6 +114,35 @@ The Gaussian kernel is **unnormalized and unweighted**. The library evaluates th
 
 The `interp_fft` method deposits each source point to a local tensor-product interpolation stencil on an extended regular lattice, then evaluates one zero-padded Gaussian convolution. Its work scales approximately as `O(N * wx * wy + P * log P)`, where `N` is the point count, `wx * wy` is stencil size, and `P` is the FFT workspace size. See [the mathematical error-bound derivation](docs/ONE_FFT_ERROR_BOUNDS.md).
 
+## Stable weighted, pixel-integrated persistence images
+
+Choose `--representation stable` for the traditional weighted, integrated
+Gaussian persistence image: normalized Gaussian **probability densities**,
+a bounded Lipschitz ramp `min(p/weight_scale, 1)` vanishing at zero persistence,
+and **exact pixel integrals** using Gaussian CDF differences.
+
+```bash
+persistence-images --input ./data/diagrams --spacing ./data/spacing.csv \\
+  --output ./output/stable.csv --nx 128 --ny 128 \\
+  --sigma-x 0.2 --sigma-y 0.2 \\
+  --representation stable --weight-scale 1.0 --bounds 0 3 0 3
+```
+
+The Python API also offers `stable_persistence_image(diagram, bounds, ...)`
+and `stable_batch_images`, taking finite (birth,persistence) coordinates.
+Stable mode supports `auto`, `dense`, and `factorized` (all compute the
+exact integral formula in real arithmetic), with no optional truncation
+tolerance. The original sampled mode remains unchanged.
+
+The Gaussian is normalized over the **whole plane**, not within the image
+bounds. The output is not re-normalized to sum to one. To invoke the
+Wasserstein-1 stability theorem, use the same **fixed bounds, bandwidths
+and weight scale** across diagrams; default dataset-fitted bounds and
+per-sample voxel spacing can otherwise change the mathematical map.
+Essential/infinite classes must be handled upstream.
+
+See the [self-contained definition and proof](docs/STABLE_PERSISTENCE_IMAGES.md).
+
 ## Testing and benchmarking
 
 ```bash
