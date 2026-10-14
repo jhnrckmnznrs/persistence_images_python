@@ -9,6 +9,14 @@ ALLOWED={
 
 def recommended(case):
     name=case["name"]
+    if name.startswith("small"):
+        return ([("python","dense"),("rust","separable"),
+                 ("python","auto"),("rust","auto")]
+                + ([("python","factorized"),("rust","shared")] if case["kind"]=="quantized" else []))
+    if name=="large_anisotropic":
+        return [("python","dense"),("rust","separable"),
+                ("python","sparse"),("rust","sparse"),
+                ("python","auto"),("rust","auto")]
     if name=="large_narrow":
         return [("python","dense"),("python","sparse"),("rust","sparse"),
                 ("python","auto"),("rust","auto")]
@@ -31,6 +39,17 @@ def verify(records):
             checks+=1
             if a["source_fingerprint_fnv64"]!=b["source_fingerprint_fnv64"]:
                 raise AssertionError("Dataset generator mismatch: "+a["case"])
+            if ("sampled_pixel_indices" in a and "sampled_pixel_indices" in b):
+                if a["sampled_pixel_indices"]!=b["sampled_pixel_indices"]:
+                    raise AssertionError("Different sampled pixel positions: "+a["case"])
+                av=a["sampled_pixel_values"]
+                bv=b["sampled_pixel_values"]
+                if len(av)!=len(bv):
+                    raise AssertionError("Different sampled pixel counts")
+                tolerance=(a.get("absolute_error_requested") or 0.0)+(b.get("absolute_error_requested") or 0.0)
+                tolerance+=2e-10*max([1.0]+[abs(v) for v in av]+[abs(v) for v in bv])
+                if max(abs(x-y) for x,y in zip(av,bv))>tolerance:
+                    raise AssertionError("Cross-language sampled pixels differ: "+a["case"])
             pixels=a["nx"]*a["ny"]
             allowed=pixels*2e-8+2e-10*max(1,abs(a["image_sum"]),abs(b["image_sum"]))
             if abs(a["image_sum"]-b["image_sum"])>allowed:
