@@ -33,7 +33,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: jhnrckmnznrs/persistence_images
-          ref: b7453fb7562b6750bce0e14be6de2bd6b45a7e70
+          ref: f90059ae3514d511367b657ef2a5138fbf01a1db
           path: rust-reference
       - uses: dtolnay/rust-toolchain@stable
       - uses: actions/setup-python@v5
@@ -41,6 +41,7 @@ jobs:
           python-version: "3.12"
       - run: python -m pip install -e .
       - run: python scripts/compare_with_rust.py rust-reference
+      - run: python scripts/compare_stable_with_rust.py rust-reference
 
   benchmark-parity:
     runs-on: ubuntu-latest
@@ -49,7 +50,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: jhnrckmnznrs/persistence_images
-          ref: b7453fb7562b6750bce0e14be6de2bd6b45a7e70
+          ref: f90059ae3514d511367b657ef2a5138fbf01a1db
           path: rust-reference
       - uses: dtolnay/rust-toolchain@stable
       - uses: actions/setup-python@v5
