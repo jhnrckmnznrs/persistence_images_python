@@ -135,3 +135,10 @@ The package is maintained independently from Rust and does not require a Rust co
 ## License
 
 MIT License. Copyright (c) 2026 John Rick Manzanares.
+
+## Reproducible benchmarks
+
+The [shared benchmark suite](benchmarks/README.md) includes deterministic
+small-to-large quantized/continuous diagrams, anisotropic and narrow kernels,
+independent reference errors, CPU metadata and peak process RSS. Run both
+repositories with `python benchmarks/run_suite.py --rust-repo ../persistence_images`.
