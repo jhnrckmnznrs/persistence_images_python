@@ -26,6 +26,14 @@ jobs:
       - run: |
           OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 NUMBA_NUM_THREADS=1 MKL_NUM_THREADS=1 python benchmarks/benchmark_suite.py --case small_continuous --engine dense --repeats 1 --warmup 0
 
+      - name: Stable CDF-basis timing smoke
+        if: matrix.python-version == '3.12'
+        env:
+          OPENBLAS_NUM_THREADS: "1"
+          OMP_NUM_THREADS: "1"
+          MKL_NUM_THREADS: "1"
+        run: python benchmarks/benchmark_stable_shared.py
+
   rust-parity:
     runs-on: ubuntu-latest
     steps:

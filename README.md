@@ -182,6 +182,15 @@ it does not change the assumptions of the mathematical Wasserstein
 stability bound. Floating-point summation order may differ from direct
 integration.
 
+Measure the benefits of reuse on a deterministic quantized batch:
+
+```bash
+OPENBLAS_NUM_THREADS=1 python benchmarks/benchmark_stable_shared.py
+```
+
+These kernel measurements exclude file I/O and dataset construction;
+run on representative diagrams to measure actual benefits.
+
 ## Testing and benchmarking
 
 ```bash
