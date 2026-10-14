@@ -1,0 +1,48 @@
+name: Publish Python package files
+on:
+  push:
+    paths:
+      - 'bootstrap/ready.txt'
+permissions:
+  contents: write
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - name: Verify and extract complete source bundle
+        run: |
+          python - <<'PY'
+          import base64
+          import hashlib
+          import io
+          import tarfile
+          from pathlib import Path
+
+          parts = [Path(f"bootstrap/chunk{i:02d}.b64").read_text() for i in range(12)]
+          archive = base64.b64decode("".join(parts), validate=True)
+          expected = "c3ca8c3bdf48a9eb213cedab217f58118d73048f36f68d21bd71dffb35891b98"
+          if hashlib.sha256(archive).hexdigest() != expected:
+              raise RuntimeError("Source archive integrity check failed")
+          with tarfile.open(fileobj=io.BytesIO(archive), mode="r:xz") as tar:
+              members = tar.getmembers()
+              for entry in members:
+                  path = Path(entry.name)
+                  if path.is_absolute() or ".." in path.parts or not entry.isfile():
+                      raise RuntimeError(f"Unsafe archive entry: {entry.name}")
+              for entry in members:
+                  destination = Path(entry.name)
+                  destination.parent.mkdir(parents=True, exist_ok=True)
+                  destination.write_bytes(tar.extractfile(entry).read())
+          print(f"Extracted {len(members)} repository source files")
+          PY
+      - name: Commit Python package and remove staging files
+        run: |
+          rm -rf bootstrap
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Publish standalone Python package v0.5.0"
+          git push
