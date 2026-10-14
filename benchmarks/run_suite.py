@@ -59,6 +59,7 @@ def verify(records):
 def main():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument("--profile",choices=list(LEVEL),default="smoke")
+    p.add_argument("--cases",help="Comma-separated specific workload names")
     p.add_argument("--rust-repo",type=Path)
     p.add_argument("--engines",help="Comma-separated language:engine pairs")
     p.add_argument("--output-dir",type=Path,default=Path("benchmarks/results"))
@@ -85,8 +86,13 @@ def main():
     env=os.environ.copy()
     for k in ("OPENBLAS_NUM_THREADS","OMP_NUM_THREADS","MKL_NUM_THREADS","NUMBA_NUM_THREADS"):
         env[k]="1"
+    requested=set(args.cases.split(",")) if args.cases else None
+    known={c["name"] for c in suite["cases"]}
+    if requested is not None and not requested<=known:
+        p.error("Unknown workload names: "+str(sorted(requested-known)))
     records=[]
     for case in suite["cases"]:
+        if requested is not None and case["name"] not in requested:continue
         if LEVEL[case["profile"]]>LEVEL[args.profile]:continue
         for lang,engine in custom if custom is not None else recommended(case):
             if lang=="rust" and rust is None:continue
