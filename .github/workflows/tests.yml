@@ -33,7 +33,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: jhnrckmnznrs/persistence_images
-          ref: 49099089e94801df476092abb1f42ac096cdbc64
+          ref: b7453fb7562b6750bce0e14be6de2bd6b45a7e70
           path: rust-reference
       - uses: dtolnay/rust-toolchain@stable
       - uses: actions/setup-python@v5
@@ -41,3 +41,37 @@ jobs:
           python-version: "3.12"
       - run: python -m pip install -e .
       - run: python scripts/compare_with_rust.py rust-reference
+
+  benchmark-parity:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: jhnrckmnznrs/persistence_images
+          ref: b7453fb7562b6750bce0e14be6de2bd6b45a7e70
+          path: rust-reference
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install -e ".[dev]"
+      - name: Compare exact backends on small diagrams
+        run: |
+          python benchmarks/run_suite.py --rust-repo rust-reference \
+            --profile smoke --cases small_continuous,small_quantized \
+            --engines python:dense,rust:separable \
+            --warmup 0 --repeats 1 --strict \
+            --output-dir benchmark-results/exact
+      - name: Compare one-FFT backends on medium diagrams
+        run: |
+          python benchmarks/run_suite.py --rust-repo rust-reference \
+            --profile standard --cases medium_continuous \
+            --engines python:interp_fft,rust:interp-fft \
+            --warmup 1 --repeats 1 --strict \
+            --output-dir benchmark-results/fft
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: benchmark-parity-reports
+          path: benchmark-results/
