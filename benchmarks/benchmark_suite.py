@@ -95,6 +95,8 @@ def run(case,suite,engine,repeats=5,warmup=1,epsilon=1e-8):
       "reference_pixel_count":len(indices),
       "max_abs_error":error,
       "max_scaled_error":error/max(1.0,float(np.max(np.abs(exact)))),
+      "sampled_pixel_indices":indices,
+      "sampled_pixel_values":[float(v) for v in image[indices]],
       "image_sum":float(np.sum(image)),
       "image_linf":float(np.max(np.abs(image))),
       "python_version":platform.python_version(),
