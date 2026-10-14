@@ -46,8 +46,8 @@ def main(argv: list[str] | None = None) -> int:
     if args.representation == "stable":
         if args.absolute_error is not None:
             parser.error("Stable pixel integration has no approximation tolerance")
-        if args.engine not in ("auto", "dense", "factorized"):
-            parser.error("Stable representation supports only auto, dense or factorized")
+        if args.engine not in ("auto", "dense", "factorized", "shared"):
+            parser.error("Stable representation supports auto, dense, factorized or shared")
         if not (args.weight_scale > 0):
             parser.error("--weight-scale must be positive")
     if args.engine in ("sparse", "grid_fft", "interp_fft") and args.absolute_error is None:

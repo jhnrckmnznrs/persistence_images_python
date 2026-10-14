@@ -143,6 +143,54 @@ Essential/infinite classes must be handled upstream.
 
 See the [self-contained definition and proof](docs/STABLE_PERSISTENCE_IMAGES.md).
 
+## Reusable CDF bases for stable persistence images
+
+For batches of quantized diagrams, `stable_batch_images(..., engine="shared")`
+reuses weighted Gaussian CDF-difference bases. If the unique birth values
+are `beta_u` and positive persistence values are `pi_v`, construct:
+
+```text
+A[i,u] = Phi((x[i+1]-beta[u])/sigma_x) - Phi((x[i]-beta[u])/sigma_x)
+D[v,j] = min(1, pi[v]/weight_scale) *
+         (Phi((y[j+1]-pi[v])/sigma_y)-Phi((y[j]-pi[v])/sigma_y))
+C[u,v] = number of diagram points with (beta[u], pi[v])
+PI = A @ C @ D
+```
+
+This retains the **same exact pixel integrals** in real arithmetic, even
+for non-square grids and anisotropic bandwidths. It does not normalize
+the final image by its sum. Equal voxel-spacing groups reuse the CDF
+bases; different spacings are processed separately. The automatic
+stable batch engine applies a conservative reuse cost heuristic and
+falls back to direct integration when beneficial. The explicit `shared`
+engine enforces a memory cap and errors if exceeded; it is not available
+for the streaming CLI. Individual diagrams still use `dense`,
+`factorized`, or `auto`.
+
+Example:
+
+```python
+from persistence_images import StableCdfBasis, stable_batch_images
+images = stable_batch_images(
+    diagrams, bounds, 128, 128, 0.2, 0.2,
+    spacings=[1.0] * len(diagrams), weight_scale=1.0, engine="shared"
+)
+```
+
+This factorization is standard separability plus a multiplicity matrix;
+it does not change the assumptions of the mathematical Wasserstein
+stability bound. Floating-point summation order may differ from direct
+integration.
+
+Measure the benefits of reuse on a deterministic quantized batch:
+
+```bash
+OPENBLAS_NUM_THREADS=1 python benchmarks/benchmark_stable_shared.py
+```
+
+These kernel measurements exclude file I/O and dataset construction;
+run on representative diagrams to measure actual benefits.
+
 ## Testing and benchmarking
 
 ```bash

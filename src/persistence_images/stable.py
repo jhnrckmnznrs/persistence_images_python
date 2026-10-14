@@ -128,17 +128,9 @@ def stable_batch_images(
     weight_scale: float = 1.0, batch_size: int = 4096,
     engine: str = "auto",
 ) -> list[NDArray[np.float64]]:
-    """Evaluate already spacing-scaled diagrams with scaled bandwidths."""
-    if spacings is None:
-        spacings = [1.0] * len(diagrams)
-    if len(spacings) != len(diagrams):
-        raise ValueError("spacings length mismatch")
-    if any(not np.isfinite(s) or s <= 0.0 for s in spacings):
-        raise ValueError("spacings must be finite and positive")
-    return [
-        stable_persistence_image(
-            d, bounds, nx, ny, sigma_x * s, sigma_y * s,
-            weight_scale=weight_scale, batch_size=batch_size, engine=engine
-        )
-        for d, s in zip(diagrams, spacings)
-    ]
+    """Exact pixel-integral batch, optionally sharing CDF-difference bases."""
+    from ._stable_basis import stable_batch_images_with_bases
+    return stable_batch_images_with_bases(
+        diagrams, bounds, nx, ny, sigma_x, sigma_y, spacings=spacings,
+        weight_scale=weight_scale, batch_size=batch_size, engine=engine,
+    )

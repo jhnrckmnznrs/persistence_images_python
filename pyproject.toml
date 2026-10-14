@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "persistence-images-python"
-version = "0.6.0"
-description = "Python persistence images with adaptive Gaussian summation and certified one-FFT interpolation"
+version = "0.7.0"
+description = "Stable pixel-integrated persistence images with reusable Gaussian CDF bases"
 readme = "README.md"
 requires-python = ">=3.10"
 authors = [{ name = "John Rick Manzanares" }]

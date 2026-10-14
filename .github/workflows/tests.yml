@@ -26,6 +26,14 @@ jobs:
       - run: |
           OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 NUMBA_NUM_THREADS=1 MKL_NUM_THREADS=1 python benchmarks/benchmark_suite.py --case small_continuous --engine dense --repeats 1 --warmup 0
 
+      - name: Stable CDF-basis timing smoke
+        if: matrix.python-version == '3.12'
+        env:
+          OPENBLAS_NUM_THREADS: "1"
+          OMP_NUM_THREADS: "1"
+          MKL_NUM_THREADS: "1"
+        run: python benchmarks/benchmark_stable_shared.py
+
   rust-parity:
     runs-on: ubuntu-latest
     steps:
@@ -33,7 +41,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: jhnrckmnznrs/persistence_images
-          ref: 879c850d4833ed0677d93f9480222773c91c5a8c
+          ref: 5ddf3a3e303c825a4dfc9c64f3173acd04bf974a
           path: rust-reference
       - uses: dtolnay/rust-toolchain@stable
       - uses: actions/setup-python@v5
@@ -50,7 +58,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: jhnrckmnznrs/persistence_images
-          ref: 879c850d4833ed0677d93f9480222773c91c5a8c
+          ref: 5ddf3a3e303c825a4dfc9c64f3173acd04bf974a
           path: rust-reference
       - uses: dtolnay/rust-toolchain@stable
       - uses: actions/setup-python@v5
