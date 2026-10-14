@@ -5,8 +5,9 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-from .core import compute_bounds, persistence_image
+from .core import Bounds, compute_bounds, persistence_image
 from .batch import batch_persistence_images
+from .stable import stable_persistence_image, stable_batch_images
 from .dataset import load_dataset, to_scaled_diagrams
 from .io import collect_csv_files, load_spacing, read_diagram
 from .io import save_images_to_csv
@@ -25,6 +26,12 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--sigma-x", type=float, default=0.86)
     parser.add_argument("--sigma-y", type=float, default=0.63984)
     parser.add_argument("--remove-h0", action="store_true")
+    parser.add_argument("--representation", choices=("sampled", "stable"), default="sampled",
+                        help="Stable uses weighted normalized Gaussians integrated over pixels")
+    parser.add_argument("--weight-scale", type=float, default=1.0,
+                        help="Persistence ramp saturation scale in spacing-scaled units")
+    parser.add_argument("--bounds", nargs=4, type=float, metavar=("XMIN", "XMAX", "YMIN", "YMAX"),
+                        help="Fixed grid bounds; recommended for stable comparisons")
     parser.add_argument("--diagram-suffix", type=str)
     parser.add_argument("--batch-size", type=int, default=4096)
     parser.add_argument("--engine", choices=("auto", "dense", "factorized", "shared", "sparse", "grid_fft", "interp_fft"), default="auto")
@@ -36,8 +43,22 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
+    if args.representation == "stable":
+        if args.absolute_error is not None:
+            parser.error("Stable pixel integration has no approximation tolerance")
+        if args.engine not in ("auto", "dense", "factorized"):
+            parser.error("Stable representation supports only auto, dense or factorized")
+        if not (args.weight_scale > 0):
+            parser.error("--weight-scale must be positive")
     if args.engine in ("sparse", "grid_fft", "interp_fft") and args.absolute_error is None:
         parser.error("--engine sparse, grid_fft or interp_fft requires --absolute-error")
+    if args.bounds is not None:
+        try:
+            fixed_bounds = Bounds(*args.bounds)
+        except ValueError as exc:
+            parser.error(str(exc))
+    else:
+        fixed_bounds = None
     if args.stream:
         if args.engine == "shared":
             raise ValueError("The shared engine requires a materialized dataset; omit --stream")
@@ -54,19 +75,19 @@ def main(argv: list[str] | None = None) -> int:
             s = spacing.get(f"{path.stem}.tif", 1.0)
             return read_diagram(path, remove_h0=args.remove_h0) * s
 
-        bounds = compute_bounds(scaled(path) for path in paths)
+        bounds = fixed_bounds if fixed_bounds is not None else compute_bounds(scaled(path) for path in paths)
         if bounds is None:
             print("No persistence points remain after preprocessing.")
             return 0
         print(f"Bounds: {bounds}")
         images = (
-            persistence_image(
+            (stable_persistence_image if args.representation == "stable" else persistence_image)(
                 scaled(path), bounds,
                 nx=args.nx, ny=args.ny,
                 sigma_x=args.sigma_x * spacing.get(f"{path.stem}.tif", 1.0),
                 sigma_y=args.sigma_y * spacing.get(f"{path.stem}.tif", 1.0),
                 batch_size=args.batch_size, engine=args.engine,
-                absolute_error=args.absolute_error,
+                **({"weight_scale": args.weight_scale} if args.representation == "stable" else {"absolute_error": args.absolute_error}),
             )
             for path in paths
         )
@@ -82,18 +103,18 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     diagrams = to_scaled_diagrams(dataset)
-    bounds = compute_bounds(diagrams)
+    bounds = fixed_bounds if fixed_bounds is not None else compute_bounds(diagrams)
     if bounds is None:
         print("No persistence points remain after preprocessing.")
         return 0
     print(f"Bounds: {bounds}")
 
-    images = batch_persistence_images(
+    images = (stable_batch_images if args.representation == "stable" else batch_persistence_images)(
         diagrams, bounds, nx=args.nx, ny=args.ny,
         sigma_x=args.sigma_x, sigma_y=args.sigma_y,
         spacings=[sample.voxel_spacing for sample in dataset],
         batch_size=args.batch_size, engine=args.engine,
-        absolute_error=args.absolute_error,
+        **({"weight_scale": args.weight_scale} if args.representation == "stable" else {"absolute_error": args.absolute_error}),
     )
     save_images_to_csv((sample.path.stem for sample in dataset), images, args.output)
     print(f"Saved to {args.output}")
