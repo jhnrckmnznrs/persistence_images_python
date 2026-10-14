@@ -33,7 +33,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: jhnrckmnznrs/persistence_images
-          ref: f90059ae3514d511367b657ef2a5138fbf01a1db
+          ref: 879c850d4833ed0677d93f9480222773c91c5a8c
           path: rust-reference
       - uses: dtolnay/rust-toolchain@stable
       - uses: actions/setup-python@v5
@@ -50,7 +50,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: jhnrckmnznrs/persistence_images
-          ref: f90059ae3514d511367b657ef2a5138fbf01a1db
+          ref: 879c850d4833ed0677d93f9480222773c91c5a8c
           path: rust-reference
       - uses: dtolnay/rust-toolchain@stable
       - uses: actions/setup-python@v5
