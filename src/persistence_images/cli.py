@@ -44,10 +44,10 @@ def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
     if args.representation == "stable":
-        if args.absolute_error is not None:
-            parser.error("Stable pixel integration has no approximation tolerance")
-        if args.engine not in ("auto", "dense", "factorized", "shared"):
-            parser.error("Stable representation supports auto, dense, factorized or shared")
+        if args.engine not in ("auto", "dense", "factorized", "shared", "interp_fft"):
+            parser.error("Stable representation supports auto, dense, factorized, shared or interp_fft")
+        if args.engine == "interp_fft" and args.absolute_error is None:
+            parser.error("Stable integrated interp_fft requires --absolute-error")
         if not (args.weight_scale > 0):
             parser.error("--weight-scale must be positive")
     if args.engine in ("sparse", "grid_fft", "interp_fft") and args.absolute_error is None:
@@ -87,7 +87,7 @@ def main(argv: list[str] | None = None) -> int:
                 sigma_x=args.sigma_x * spacing.get(f"{path.stem}.tif", 1.0),
                 sigma_y=args.sigma_y * spacing.get(f"{path.stem}.tif", 1.0),
                 batch_size=args.batch_size, engine=args.engine,
-                **({"weight_scale": args.weight_scale} if args.representation == "stable" else {"absolute_error": args.absolute_error}),
+                **({"weight_scale": args.weight_scale, "absolute_error": args.absolute_error} if args.representation == "stable" else {"absolute_error": args.absolute_error}),
             )
             for path in paths
         )
