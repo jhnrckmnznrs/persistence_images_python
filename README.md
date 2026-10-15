@@ -1,6 +1,6 @@
 # Persistence Images in Python
 
-A standalone Python package for converting persistence diagrams into fixed-length numerical features. It supports NumPy computation, shared Gaussian bases for quantized data, and optional error-controlled algorithms for large datasets. It uses the same mathematical conventions and CSV format as the companion [Rust implementation](https://github.com/jhnrckmnznrs/persistence_images).
+A standalone Python package for weighted, pixel-integrated **stable persistence images** and legacy pixel-center sampled features. It offers high-performance CDF factorization and certified integrated one-FFT computation, a scikit-learn-compatible transformer, flexible weighting and covariance reference methods, and optional visualization. It supports NumPy computation, shared Gaussian bases for quantized data, and optional error-controlled algorithms for large datasets. It uses the same mathematical conventions and CSV format as the companion [Rust implementation](https://github.com/jhnrckmnznrs/persistence_images).
 
 ## Install
 
@@ -17,7 +17,99 @@ python -m pip install -e ".[dev]"
 python -m pytest -q
 ```
 
-Only NumPy is needed for the standard implementation. The optional `fast` extra installs Numba; the `grid` extra installs Numba and SciPy.
+Only NumPy is required for the direct diagonal-Gaussian implementation. The `grid` extra installs Numba and SciPy for the FFT methods, `ml` installs scikit-learn, and `viz` installs Matplotlib. The `compare` extra includes GUDHI and persim for reproducible reference comparisons.
+
+
+## Fitted machine-learning transformer
+
+The optional `ml` extra installs scikit-learn. The transformer has
+`fit`, `transform`, `fit_transform`, `get_params`, `set_params`,
+and `get_feature_names_out` methods, returns a 2D NumPy feature matrix,
+and can be used inside `sklearn.pipeline.Pipeline` or cross-validation.
+It accepts ragged lists of diagrams and birth–persistence or birth–death
+coordinates.
+
+```python
+from persistence_images import PersistenceImageTransformer
+from sklearn.pipeline import make_pipeline
+from sklearn.linear_model import LogisticRegression
+
+transformer = PersistenceImageTransformer(
+    nx=64, ny=64, sigma_x=0.2, sigma_y=0.2,
+    coordinates="birth_death", engine="auto",
+)
+model = make_pipeline(transformer, LogisticRegression(max_iter=1000))
+model.fit(train_diagrams, train_labels)
+predictions = model.predict(test_diagrams)
+```
+
+The learned `bounds_` are frozen after `fit`; **fit using training data
+only**, particularly within cross-validation. For scientific comparisons,
+supply a physically meaningful fixed `Bounds` rather than allowing the
+range to change between training folds. `transform_images` returns
+`(n_diagrams,nx,ny)` rather than a flat feature matrix.
+
+## Custom weights and correlated Gaussian kernels
+
+The default fast stable representation uses a **bounded Lipschitz ramp**
+and diagonal Gaussian covariance. A separate flexible reference function
+adds `linear_ramp`, power weights, user callables and full positive-definite
+2x2 covariance. It supports the same fixed pixel grid.
+
+```python
+import numpy as np
+from persistence_images import Bounds, flexible_persistence_image
+
+pixels = flexible_persistence_image(
+    diagram, Bounds(0, 3, 0, 3), nx=64, ny=64,
+    weight="linear_ramp",
+    weight_params={"start": 0.1, "end": 1.0},
+    covariance=np.array([[0.09, 0.018], [0.018, 0.04]]),
+    quadrature_nodes=64,
+)
+```
+
+For **diagonal covariance**, pixel integrals use exact Gaussian CDF
+differences (up to floating-point error). **Correlated covariance**
+uses deterministic Gauss–Legendre quadrature; it is not exact or covered
+by our FFT error certificates. Compare multiple quadrature orders for
+convergence and avoid assuming reliability for very narrow kernels.
+
+Custom callables take an array of persistence coordinates and must return
+one finite nonnegative weight per input. Their mathematical stability is
+**not automatically guaranteed**. In particular, an arbitrary callable,
+a power weight or a nonzero diagonal weight cannot inherit the
+bounded-ramp global Wasserstein bound. Correlated Gaussian kernels with
+a fixed positive-definite covariance and suitably regular weights can
+have stability properties, but the existing specialized bound is not
+claimed for these reference settings.
+
+The optimized `shared` and `interp_fft` stable engines intentionally
+remain restricted to the original bounded ramp and diagonal covariance.
+
+## Visualization
+
+With `pip install -e ".[viz]"`, use
+
+```python
+from persistence_images import plot_diagram, plot_image
+ax = plot_diagram(diagram)
+ax = plot_image(pixels, Bounds(0,3,0,3), 64, 64)
+```
+
+Birth lies on the horizontal axis and persistence on the vertical axis.
+
+## Comparisons with established libraries
+
+`benchmarks/compare_libraries.py` runs an opt-in numerical comparison
+against `persim.PersistenceImager` with matching birth–persistence
+coordinates, ramp, Gaussian covariance and exact pixel boundaries.
+Its default mode is a small, reproducible numerical parity check; the
+full timing study is separate because library installation, warm caches,
+pixel alignment and representation differences affect fair comparisons.
+GUDHI's standard PersistenceImage is **sampled**, rather than
+pixel-integrated, and cannot be treated as numerically equivalent without
+changing the baseline problem.
 
 ## Command line
 
@@ -45,7 +137,8 @@ persistence-images \
   --output ./output/images.csv \
   --nx 128 --ny 128 \
   --sigma-x 0.2 --sigma-y 0.2 \
-  --engine auto
+  --representation stable --engine auto \
+  --weight-scale 1.0 --bounds 0 3 0 3
 ```
 
 You can also run `python -m persistence_images`. The output directory must already exist. The output CSV contains no header; each row starts with the input filename stem, followed by the flattened persistence-image values. The flag `--remove-h0` removes one dominant component according to the Rust project's selection rule. Use `--diagram-suffix` to select diagram files and `--stream` for a two-pass input workflow that reduces memory use.
@@ -89,7 +182,15 @@ The library also exposes `read_diagram`, `load_dataset`, `batch_persistence_imag
 
 ## Mathematical convention
 
-For a point with birth `b` and death `d`, define persistence `p = d - b`. The point contribution at pixel center `(x_i, y_j)` is
+**For stable images**, each diagram point contributes its bounded persistence
+weight times the integral of a probability-normalized anisotropic Gaussian
+over the corresponding pixel rectangle. The output is not normalized by
+its own total mass. Use `--representation stable` for scientific workflows
+that require the classical pixel-integrated representation and its
+fixed-parameter Wasserstein stability analysis.
+
+The default `sampled` representation is retained for backward compatibility.
+For that **sampled** mode, a point with birth `b` and death `d`, define persistence `p = d - b`. The point contribution at pixel center `(x_i, y_j)` is
 
 \[
 I_{ij} = \sum_k \exp\left[-\frac{(x_i-b_k)^2}{2\sigma_x^2}
@@ -130,9 +231,10 @@ persistence-images --input ./data/diagrams --spacing ./data/spacing.csv \\
 
 The Python API also offers `stable_persistence_image(diagram, bounds, ...)`
 and `stable_batch_images`, taking finite (birth,persistence) coordinates.
-Stable mode supports `auto`, `dense`, and `factorized` (all compute the
-exact integral formula in real arithmetic), with no optional truncation
-tolerance. The original sampled mode remains unchanged.
+Stable mode supports `auto`, `dense`, `factorized`, and `shared` for
+direct or reused CDF integrals, plus `interp_fft` with an explicit
+interpolation-error budget. The original sampled mode remains unchanged.
+With no `absolute_error`, stable `auto` avoids intentional approximation.
 
 The Gaussian is normalized over the **whole plane**, not within the image
 bounds. The output is not re-normalized to sum to one. To invoke the
@@ -193,8 +295,8 @@ run on representative diagrams to measure actual benefits.
 
 ## Certified FFT for stable, pixel-integrated images
 
-The stable representation also supports `--representation stable --engine interp_fft
---absolute-error 1e-8`. Unlike the sampled FFT, this **integrates** a
+The stable representation also supports
+`--representation stable --engine interp_fft --absolute-error 1e-8`. Unlike the sampled FFT, this **integrates** a
 probability-normalized Gaussian over every pixel; source weights use the
 bounded Lipschitz ramp `min(1,persistence/weight_scale)`. It uses a signed
 local interpolation stencil, a cached Gaussian **pixel-mass** FFT kernel,
@@ -254,3 +356,25 @@ The [shared benchmark suite](benchmarks/README.md) includes deterministic
 small-to-large quantized/continuous diagrams, anisotropic and narrow kernels,
 independent reference errors, CPU metadata and peak process RSS. Run both
 repositories with `python benchmarks/run_suite.py --rust-repo ../persistence_images`.
+
+## Controlled external-library comparison
+
+The benchmark [protocol and measured results](benchmarks/LIBRARY_COMPARISON.md)
+separates two mathematical tasks:
+
+- **Exact pixel integrals**: our stable CDF and adaptive implementations
+  against `persim.PersistenceImager`, with identical pixel edges,
+  covariance, persistence weights, and coordinate convention.
+- **Point-sampled Gaussian heights**: GUDHI against an independent
+  sampled-reference formula, not against integrated pixel masses.
+
+Install `pip install -e ".[compare]"` and run:
+
+```bash
+OPENBLAS_NUM_THREADS=1 python benchmarks/compare_libraries.py \
+  --kind continuous --n 2000 --pixels 64 --repeats 5
+```
+
+All benchmark numbers depend on the library versions and machine;
+the supplied CI measurements are short reproducibility checks, not
+a comprehensive performance study on real diagrams.
