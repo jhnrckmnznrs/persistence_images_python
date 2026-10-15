@@ -10,7 +10,7 @@ from persistence_images import (
 
 @pytest.mark.parametrize("nx,ny,sx,sy,b",[
     (64,48,.2,.3,Bounds(0,1,0,1)),
-    (96,80,.18,.23,Bounds(-2,3,0,1)),
+    (96,80,.4,.23,Bounds(-2,3,0,1)),
     (80,64,.1,.26,Bounds(0,1,0,1)),
 ])
 def test_certificates(nx,ny,sx,sy,b):
