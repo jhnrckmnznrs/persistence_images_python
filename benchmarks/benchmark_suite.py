@@ -89,9 +89,8 @@ def run(case,suite,engine,repeats=5,warmup=1,epsilon=1e-8,representation='sample
                     absolute_error=epsilon if approx else None)
         if representation=="stable":
             kwargs["weight_scale"]=weight_scale
-            if engine=="shared":
-                return stable_batch_images([points],bounds,**kwargs)[0]
-            return stable_persistence_image(points,bounds,**kwargs)
+            # Both CLIs use batch dispatch, even for one diagram.
+            return stable_batch_images([points],bounds,**kwargs)[0]
         return persistence_image(points,bounds,**kwargs)
     for _ in range(warmup):compute()
     samples=[]
