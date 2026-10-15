@@ -126,14 +126,16 @@ def stable_batch_images_with_bases(
     nx: int = 10, ny: int = 8, sigma_x: float = 0.86, sigma_y: float = 0.63984,
     *, spacings: Sequence[float] | None = None,
     weight_scale: float = 1.0, batch_size: int = 4096,
-    engine: str = "auto",
+    engine: str = "auto", absolute_error: float | None = None,
 ) -> list[NDArray[np.float64]]:
     """Stable batch with optional reusable CDF bases; input already spacing-scaled."""
     _validate_params(nx, ny, sigma_x, sigma_y, batch_size)
     if not np.isfinite(weight_scale) or weight_scale <= 0:
         raise ValueError("weight_scale must be finite and positive")
-    if engine not in {"auto", "dense", "factorized", "shared"}:
-        raise ValueError("Stable images support auto, dense, factorized or shared")
+    if engine not in {"auto", "dense", "factorized", "shared", "interp_fft"}:
+        raise ValueError("Stable images support auto, dense, factorized, shared or interp_fft")
+    if absolute_error is not None and (not np.isfinite(absolute_error) or absolute_error <= 0):
+        raise ValueError("absolute_error must be finite and positive")
     points = [_points(d) for d in diagrams]
     if any(np.any(d[:, 1] < 0) for d in points):
         raise ValueError("Stable images require nonnegative persistence")
@@ -169,5 +171,6 @@ def stable_batch_images_with_bases(
                 points[i], bounds, nx, ny, sx, sy,
                 weight_scale=weight_scale, batch_size=batch_size,
                 engine="dense" if engine == "shared" else engine,
+                absolute_error=absolute_error,
             )
     return [out for out in outputs if out is not None]

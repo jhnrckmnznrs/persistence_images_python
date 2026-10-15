@@ -50,7 +50,7 @@ persistence-images \
 
 You can also run `python -m persistence_images`. The output directory must already exist. The output CSV contains no header; each row starts with the input filename stem, followed by the flattened persistence-image values. The flag `--remove-h0` removes one dominant component according to the Rust project's selection rule. Use `--diagram-suffix` to select diagram files and `--stream` for a two-pass input workflow that reduces memory use.
 
-For large, continuous-valued diagrams, the one-FFT interpolation algorithm is available with an **explicit approximation tolerance**:
+For large, continuous-valued diagrams, the sampled one-FFT interpolation algorithm is available with an **explicit approximation tolerance**:
 
 ```bash
 persistence-images \
@@ -190,6 +190,41 @@ OPENBLAS_NUM_THREADS=1 python benchmarks/benchmark_stable_shared.py
 
 These kernel measurements exclude file I/O and dataset construction;
 run on representative diagrams to measure actual benefits.
+
+## Certified FFT for stable, pixel-integrated images
+
+The stable representation also supports `--representation stable --engine interp_fft
+--absolute-error 1e-8`. Unlike the sampled FFT, this **integrates** a
+probability-normalized Gaussian over every pixel; source weights use the
+bounded Lipschitz ramp `min(1,persistence/weight_scale)`. It uses a signed
+local interpolation stencil, a cached Gaussian **pixel-mass** FFT kernel,
+and one convolution per diagram.
+
+```bash
+persistence-images --input ./data/diagrams --spacing ./data/spacing.csv \
+  --output ./output/stable.csv --representation stable --engine interp_fft \
+  --absolute-error 1e-8 --nx 128 --ny 128 \
+  --sigma-x 0.2 --sigma-y 0.2 --weight-scale 1.0 \
+  --bounds 0 3 0 3
+```
+
+The `absolute_error` budget bounds **interpolation truncation per pixel
+in exact arithmetic**, not FFT floating-point roundoff. The public
+`stable_interp_fft_image(...,return_certificate=True)` returns both the
+image and an object with uniform pixel and whole-vector L1 error bounds.
+The FFT evaluator rejects sources outside the fixed grid and kernels
+that cannot be certified within the supported stencils. `auto` considers
+the FFT only when a tolerance is supplied and can fall back to exact
+CDF integration. The default stable mode remains exact in real arithmetic.
+Nonnegative output clipping cannot increase approximation error, because
+exact pixel masses are nonnegative. Never divide a finished image by its
+own pixel sum.
+
+The original fixed-parameter Wasserstein stability bound holds for the
+**exact** stable image. The FFT approximation satisfies the corresponding
+L1 inequality with an additional sum of certified approximation errors,
+rather than necessarily the same exact Lipschitz constant.
+See [the derivation](docs/STABLE_INTEGRATED_FFT.md).
 
 ## Testing and benchmarking
 

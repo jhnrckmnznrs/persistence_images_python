@@ -81,7 +81,7 @@ def stable_persistence_image(
     nx: int = 10, ny: int = 8,
     sigma_x: float = 0.86, sigma_y: float = 0.63984,
     *, weight_scale: float = 1.0, batch_size: int = 4096,
-    engine: str = "auto",
+    engine: str = "auto", absolute_error: float | None = None,
 ) -> NDArray[np.float64]:
     """Evaluate normalized, weighted Gaussian integrals over all pixels.
 
@@ -92,20 +92,46 @@ def stable_persistence_image(
     _validate_params(nx, ny, sigma_x, sigma_y, batch_size)
     if not np.isfinite(weight_scale) or weight_scale <= 0.0:
         raise ValueError("weight_scale must be finite and positive")
-    if engine not in {"auto", "dense", "factorized"}:
-        raise ValueError("Stable images support auto, dense or factorized engines")
+    if engine not in {"auto", "dense", "factorized", "interp_fft"}:
+        raise ValueError("Stable images support auto, dense, factorized or interp_fft engines")
     points = _points(diagram)
     if np.any(points[:, 1] < 0):
         raise ValueError("Persistence must be nonnegative for stable images")
     xe, ye = _axes(bounds, nx, ny)
     if len(points) == 0:
         return np.zeros(nx * ny, dtype=np.float64)
+    if absolute_error is not None and (not np.isfinite(absolute_error) or absolute_error <= 0):
+        raise ValueError("absolute_error must be finite and positive")
+    if engine == "interp_fft":
+        if absolute_error is None:
+            raise ValueError("Integrated FFT requires --absolute-error")
+        from ._stable_interp_fft import stable_interp_fft_image
+        return stable_interp_fft_image(
+            points,bounds,nx,ny,sigma_x,sigma_y,
+            weight_scale=weight_scale,absolute_error=absolute_error
+        )
     if engine == "auto":
         sample = points[:min(1024, len(points))]
-        engine = (
-            "factorized" if len(points) >= 512 and
-            len(np.unique(sample, axis=0)) * 3 <= len(sample) else "dense"
-        )
+        if len(points) >= 512 and len(np.unique(sample, axis=0))*3 <= len(sample):
+            engine = "factorized"
+        # Otherwise retain auto, to allow certified FFT selection below.
+    if engine == "auto" and absolute_error is not None and len(points)>=2000 and nx*ny>=4096:
+        inside = (np.all((points[:,0]>=bounds.x_min)&(points[:,0]<=bounds.x_max))
+                  and np.all((points[:,1]>=bounds.y_min)&(points[:,1]<=bounds.y_max)))
+        if inside:
+            try:
+                from ._stable_interp_fft import select_stable_fft_stencil, _shape, stable_interp_fft_image
+                mass=float(np.minimum(points[:,1]/weight_scale,1.).sum())
+                cert=select_stable_fft_stencil(mass,bounds,nx,ny,sigma_x,sigma_y,absolute_error)
+                if cert is not None:
+                    shape=_shape(nx,ny,cert.width_x,cert.width_y)
+                    fft_work=12*shape[0]*shape[1]*np.log2(shape[0]*shape[1])
+                    deposit_work=len(points)*cert.width_x*cert.width_y
+                    if len(points)*nx*ny > 5*(deposit_work+fft_work):
+                        return stable_interp_fft_image(points,bounds,nx,ny,sigma_x,sigma_y,
+                            weight_scale=weight_scale,absolute_error=absolute_error)
+            except ImportError:
+                pass  # Optional FFT dependencies absent: retain direct stable integral.
     if engine == "factorized":
         unique, multiplicity = np.unique(points, axis=0, return_counts=True)
         if len(unique) > 2_000_000:
@@ -126,11 +152,12 @@ def stable_batch_images(
     sigma_x: float = 0.86, sigma_y: float = 0.63984,
     *, spacings: Sequence[float] | None = None,
     weight_scale: float = 1.0, batch_size: int = 4096,
-    engine: str = "auto",
+    engine: str = "auto", absolute_error: float | None = None,
 ) -> list[NDArray[np.float64]]:
     """Exact pixel-integral batch, optionally sharing CDF-difference bases."""
     from ._stable_basis import stable_batch_images_with_bases
     return stable_batch_images_with_bases(
         diagrams, bounds, nx, ny, sigma_x, sigma_y, spacings=spacings,
         weight_scale=weight_scale, batch_size=batch_size, engine=engine,
+        absolute_error=absolute_error,
     )
