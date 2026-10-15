@@ -7,6 +7,26 @@ ALLOWED={
  "python":{"auto","dense","factorized","sparse","interp_fft","grid_fft"},
  "rust":{"auto","direct","separable","shared","sparse","interp-fft"}}
 
+def recommended_stable(case):
+    if case["kind"]=="quantized":
+        if case["name"].startswith(("small","medium")):
+            return [("python","dense"),("rust","direct"),
+                    ("python","shared"),("rust","shared"),
+                    ("python","auto"),("rust","auto")]
+        return [("python","shared"),("rust","shared"),
+                ("python","auto"),("rust","auto")]
+    if case["name"].startswith("small"):
+        return [("python","dense"),("rust","direct"),
+                ("python","auto"),("rust","auto")]
+    if case["name"]=="large_narrow":
+        return [("python","auto"),("rust","auto")]
+    if case["name"].startswith("huge"):
+        return [("python","interp_fft"),("rust","interp-fft"),
+                ("python","auto"),("rust","auto")]
+    return [("python","dense"),("rust","direct"),
+            ("python","interp_fft"),("rust","interp-fft"),
+            ("python","auto"),("rust","auto")]
+
 def recommended(case):
     name=case["name"]
     if name.startswith("small"):
@@ -35,7 +55,8 @@ def verify(records):
     checks=0
     for i,a in enumerate(ok):
         for b in ok[i+1:]:
-            if a["case"]!=b["case"] or a["language"]==b["language"]:continue
+            if (a["case"]!=b["case"] or a["language"]==b["language"]
+                    or a.get("representation","sampled")!=b.get("representation","sampled")):continue
             checks+=1
             if a["source_fingerprint_fnv64"]!=b["source_fingerprint_fnv64"]:
                 raise AssertionError("Dataset generator mismatch: "+a["case"])
@@ -59,6 +80,8 @@ def verify(records):
 def main():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument("--profile",choices=list(LEVEL),default="smoke")
+    p.add_argument("--representation",choices=("sampled","stable"),default="sampled")
+    p.add_argument("--weight-scale",type=float,default=0.7)
     p.add_argument("--cases",help="Comma-separated specific workload names")
     p.add_argument("--rust-repo",type=Path)
     p.add_argument("--engines",help="Comma-separated language:engine pairs")
@@ -73,6 +96,8 @@ def main():
     out=args.output_dir.resolve()
     out.mkdir(parents=True,exist_ok=True)
     rust=args.rust_repo.resolve() if args.rust_repo else None
+    if args.representation=="stable" and args.weight_scale<=0:
+        p.error("--weight-scale must be positive")
     if rust and not (rust/"Cargo.toml").is_file():
         p.error("--rust-repo has no Cargo.toml")
     custom=None
@@ -80,7 +105,10 @@ def main():
         custom=[]
         for name in args.engines.split(","):
             lang,sep,engine=name.strip().partition(":")
-            if not sep or engine not in ALLOWED.get(lang,set()):
+            allowed_stable={"python":{"auto","dense","factorized","shared","interp_fft"},
+                            "rust":{"auto","direct","separable","shared","interp-fft"}}
+            allowed=allowed_stable if args.representation=="stable" else ALLOWED
+            if not sep or engine not in allowed.get(lang,set()):
                 p.error("Unknown language:engine pair: "+name)
             custom.append((lang,engine))
     env=os.environ.copy()
@@ -94,9 +122,10 @@ def main():
     for case in suite["cases"]:
         if requested is not None and case["name"] not in requested:continue
         if LEVEL[case["profile"]]>LEVEL[args.profile]:continue
-        for lang,engine in custom if custom is not None else recommended(case):
+        default=recommended_stable(case) if args.representation=="stable" else recommended(case)
+        for lang,engine in custom if custom is not None else default:
             if lang=="rust" and rust is None:continue
-            tag=case["name"]+"__"+lang+"__"+engine.replace("-","_")
+            tag=args.representation+"__"+case["name"]+"__"+lang+"__"+engine.replace("-","_")
             path=out/(tag+".json")
             if lang=="python":
                 cmd=[sys.executable,str(HERE/"benchmarks"/"benchmark_suite.py")]
@@ -104,6 +133,8 @@ def main():
                 cmd=["cargo","run","--quiet","--release","--locked",
                      "--manifest-path",str(rust/"Cargo.toml"),"--example","benchmark_suite","--"]
             cmd+=["--case",case["name"],"--engine",engine,
+                   "--representation",args.representation,
+                   "--weight-scale",str(args.weight_scale),
                    "--repeats",str(args.repeats),"--warmup",str(args.warmup),
                    "--absolute-error",str(args.absolute_error),"--output",str(path)]
             print(f"{case['name']}: {lang} {engine}",file=sys.stderr,flush=True)
@@ -121,11 +152,12 @@ def main():
             records.append(data)
     pairs=verify(records)
     report={"schema_version":1,"suite":"persistence-images-cross-language-v1",
+            "representation":args.representation,"weight_scale":args.weight_scale,
             "profile":args.profile,"records":records,
             "validation":{"cross_language_pairs_compared":pairs,
               "note":"Image-sum agreement is not pixelwise parity; reference pixels are checked separately."}}
     (out/"summary.json").write_text(json.dumps(report,indent=2,sort_keys=True)+"\n")
-    fields=["status","case","language","engine","kind","n_points","nx","ny",
+    fields=["status","case","representation","language","engine","kind","n_points","nx","ny",
             "sigma_x","sigma_y","median_ms","peak_rss_bytes","max_abs_error",
             "max_scaled_error","reference_scope","source_fingerprint_fnv64","detail"]
     with (out/"summary.csv").open("w",newline="") as f:

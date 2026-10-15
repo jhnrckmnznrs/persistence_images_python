@@ -1,4 +1,4 @@
-"""Compare Python integrated FFT against exact Rust CDF pixel integrals."""
+"""Check Python and Rust stable integrated FFT against Rust exact CDF pixels."""
 import csv
 from pathlib import Path
 import subprocess
@@ -23,16 +23,28 @@ with tempfile.TemporaryDirectory() as folder:
         "--nx","96","--ny","80","--sigma-x","0.23","--sigma-y","0.19",
         "--weight-scale","0.7","--bounds","0","2","0","2",
         "--representation","stable"]
-    p=base/"python.csv"
-    r=base/"rust.csv"
-    subprocess.run([sys.executable,"-m","persistence_images",*common,
-        "--engine","interp_fft","--absolute-error","1e-8","--output",str(p)],check=True)
-    subprocess.run(["cargo","run","--release","--locked","--",*common,
-        "--engine","direct","--output",str(r)],cwd=rust,check=True)
-    with p.open(newline="") as f: pp=list(csv.reader(f))
-    with r.open(newline="") as f: rr=list(csv.reader(f))
-    assert [a[0] for a in pp]==[b[0] for b in rr]
-    error=max(abs(float(x)-float(y))
-        for a,b in zip(pp,rr) for x,y in zip(a[1:],b[1:]))
-    assert error<=1.1e-8,error
-    print("Stable integrated FFT vs Rust exact CDF maximum difference:",error)
+    def run_python(engine):
+        path=base/f"python_{engine}.csv"
+        cmd=[sys.executable,"-m","persistence_images",*common,
+             "--engine",engine,"--output",str(path)]
+        if engine=="interp_fft":cmd+=["--absolute-error","1e-8"]
+        subprocess.run(cmd,check=True)
+        with path.open(newline="") as f:return list(csv.reader(f))
+    def run_rust(engine):
+        path=base/f"rust_{engine}.csv"
+        cmd=["cargo","run","--release","--locked","--",*common,
+             "--engine",engine,"--output",str(path)]
+        if engine=="interp-fft":cmd+=["--absolute-error","1e-8"]
+        subprocess.run(cmd,cwd=rust,check=True)
+        with path.open(newline="") as f:return list(csv.reader(f))
+    truth=run_rust("direct")
+    outputs={"python integrated FFT":run_python("interp_fft"),
+             "rust integrated FFT":run_rust("interp-fft"),
+             "rust auto FFT":run_rust("auto")}
+    for label,output in outputs.items():
+        assert [a[0] for a in output]==[a[0] for a in truth]
+        error=max(abs(float(x)-float(y))
+            for a,b in zip(output,truth) for x,y in zip(a[1:],b[1:]))
+        assert error<=1.1e-8,(label,error)
+        print(label,"versus Rust direct stable CDF max difference:",error)
+
