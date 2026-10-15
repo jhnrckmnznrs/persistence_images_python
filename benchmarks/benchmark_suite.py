@@ -139,7 +139,7 @@ def main():
     p.add_argument("--representation",choices=("sampled","stable"),default="sampled")
     p.add_argument("--weight-scale",type=float,default=0.7)
     p.add_argument("--engine",default="dense",choices=[
-      "auto","dense","factorized","sparse","grid_fft","interp_fft"])
+      "auto","dense","factorized","shared","sparse","grid_fft","interp_fft"])
     p.add_argument("--warmup",type=int,default=1)
     p.add_argument("--repeats",type=int,default=5)
     p.add_argument("--absolute-error",type=float,default=1e-8)
