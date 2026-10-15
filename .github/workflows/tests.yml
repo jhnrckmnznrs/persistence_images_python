@@ -96,6 +96,13 @@ jobs:
             --engines python:dense,rust:direct,python:interp_fft,rust:interp-fft,python:auto,rust:auto \
             --warmup 1 --repeats 1 --strict \
             --output-dir benchmark-results/stable
+      - name: Compare stable exact CDF reuse on medium quantized diagrams
+        run: |
+          python benchmarks/run_suite.py --rust-repo rust-reference \
+            --representation stable --profile standard --cases medium_quantized \
+            --engines python:dense,rust:direct,python:shared,rust:shared,python:auto,rust:auto \
+            --warmup 1 --repeats 1 --strict \
+            --output-dir benchmark-results/stable-quantized
       - uses: actions/upload-artifact@v4
         if: always()
         with:
