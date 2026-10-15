@@ -137,9 +137,13 @@ jobs:
           OMP_NUM_THREADS: "1"
           MKL_NUM_THREADS: "1"
         run: |
-          python benchmarks/compare_libraries.py --n 120 --pixels 16 --repeats 2 \
-            --output benchmarks/results/library-comparison.json
+          python benchmarks/compare_libraries.py --n 200 --pixels 24 --repeats 3 \
+            --kind continuous --output benchmarks/results/continuous-small.json
+          python benchmarks/compare_libraries.py --n 2000 --pixels 64 --repeats 3 \
+            --kind continuous --output benchmarks/results/continuous-large.json
+          python benchmarks/compare_libraries.py --n 2000 --pixels 64 --repeats 3 \
+            --kind quantized --output benchmarks/results/quantized-large.json
       - uses: actions/upload-artifact@v4
         with:
           name: library-comparison-json
-          path: benchmarks/results/library-comparison.json
+          path: benchmarks/results/*.json
