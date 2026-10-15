@@ -5,6 +5,9 @@ from .stable import stable_persistence_image, stable_batch_images
 from ._stable_basis import StableCdfBasis
 from ._stable_interp_fft import stable_interp_fft_image, StableIntegratedFft, StableFftCertificate, select_stable_fft_stencil
 from .core import Bounds, compute_bounds, persistence_image, persistence_image_reference
+from .flexible import flexible_persistence_image, persistence_weights
+from .transformer import PersistenceImageTransformer
+from .plotting import plot_diagram, plot_image
 from .dataset import SpacingDiagram, apply_spacing, load_dataset, to_scaled_diagrams
 from .io import (
     collect_csv_files,
@@ -15,6 +18,7 @@ from .io import (
 )
 
 __all__ = [
+    "PersistenceImageTransformer", "flexible_persistence_image", "persistence_weights", "plot_diagram", "plot_image",
     "Bounds", "SharedGaussianBasis", "batch_persistence_images", "SpacingDiagram", "apply_spacing", "collect_csv_files",
     "compute_bounds", "load_dataset", "load_spacing", "persistence_image",
     "persistence_image_reference", "read_diagram", "remove_infinite_class",

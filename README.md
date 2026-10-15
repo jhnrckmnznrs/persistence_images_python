@@ -19,6 +19,98 @@ python -m pytest -q
 
 Only NumPy is needed for the standard implementation. The optional `fast` extra installs Numba; the `grid` extra installs Numba and SciPy.
 
+
+## Fitted machine-learning transformer
+
+The optional `ml` extra installs scikit-learn. The transformer has
+`fit`, `transform`, `fit_transform`, `get_params`, `set_params`,
+and `get_feature_names_out` methods, returns a 2D NumPy feature matrix,
+and can be used inside `sklearn.pipeline.Pipeline` or cross-validation.
+It accepts ragged lists of diagrams and birth–persistence or birth–death
+coordinates.
+
+```python
+from persistence_images import PersistenceImageTransformer
+from sklearn.pipeline import make_pipeline
+from sklearn.linear_model import LogisticRegression
+
+transformer = PersistenceImageTransformer(
+    nx=64, ny=64, sigma_x=0.2, sigma_y=0.2,
+    coordinates="birth_death", engine="auto",
+)
+model = make_pipeline(transformer, LogisticRegression(max_iter=1000))
+model.fit(train_diagrams, train_labels)
+predictions = model.predict(test_diagrams)
+```
+
+The learned `bounds_` are frozen after `fit`; **fit using training data
+only**, particularly within cross-validation. For scientific comparisons,
+supply a physically meaningful fixed `Bounds` rather than allowing the
+range to change between training folds. `transform_images` returns
+`(n_diagrams,nx,ny)` rather than a flat feature matrix.
+
+## Custom weights and correlated Gaussian kernels
+
+The default fast stable representation uses a **bounded Lipschitz ramp**
+and diagonal Gaussian covariance. A separate flexible reference function
+adds `linear_ramp`, power weights, user callables and full positive-definite
+2x2 covariance. It supports the same fixed pixel grid.
+
+```python
+import numpy as np
+from persistence_images import Bounds, flexible_persistence_image
+
+pixels = flexible_persistence_image(
+    diagram, Bounds(0, 3, 0, 3), nx=64, ny=64,
+    weight="linear_ramp",
+    weight_params={"start": 0.1, "end": 1.0},
+    covariance=np.array([[0.09, 0.018], [0.018, 0.04]]),
+    quadrature_nodes=64,
+)
+```
+
+For **diagonal covariance**, pixel integrals use exact Gaussian CDF
+differences (up to floating-point error). **Correlated covariance**
+uses deterministic Gauss–Legendre quadrature; it is not exact or covered
+by our FFT error certificates. Compare multiple quadrature orders for
+convergence and avoid assuming reliability for very narrow kernels.
+
+Custom callables take an array of persistence coordinates and must return
+one finite nonnegative weight per input. Their mathematical stability is
+**not automatically guaranteed**. In particular, an arbitrary callable,
+a power weight or a nonzero diagonal weight cannot inherit the
+bounded-ramp global Wasserstein bound. Correlated Gaussian kernels with
+a fixed positive-definite covariance and suitably regular weights can
+have stability properties, but the existing specialized bound is not
+claimed for these reference settings.
+
+The optimized `shared` and `interp_fft` stable engines intentionally
+remain restricted to the original bounded ramp and diagonal covariance.
+
+## Visualization
+
+With `pip install -e ".[viz]"`, use
+
+```python
+from persistence_images import plot_diagram, plot_image
+ax = plot_diagram(diagram)
+ax = plot_image(pixels, Bounds(0,3,0,3), 64, 64)
+```
+
+Birth lies on the horizontal axis and persistence on the vertical axis.
+
+## Comparisons with established libraries
+
+`benchmarks/compare_libraries.py` runs an opt-in numerical comparison
+against `persim.PersistenceImager` with matching birth–persistence
+coordinates, ramp, Gaussian covariance and exact pixel boundaries.
+Its default mode is a small, reproducible numerical parity check; the
+full timing study is separate because library installation, warm caches,
+pixel alignment and representation differences affect fair comparisons.
+GUDHI's standard PersistenceImage is **sampled**, rather than
+pixel-integrated, and cannot be treated as numerically equivalent without
+changing the baseline problem.
+
 ## Command line
 
 Each input CSV is headerless, with at least two columns containing **birth and death** values:
