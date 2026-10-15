@@ -34,6 +34,15 @@ jobs:
           MKL_NUM_THREADS: "1"
         run: python benchmarks/benchmark_stable_shared.py
 
+      - name: Benchmark normalized integrated FFT
+        if: matrix.python-version == '3.12'
+        env:
+          OPENBLAS_NUM_THREADS: "1"
+          NUMBA_NUM_THREADS: "1"
+          OMP_NUM_THREADS: "1"
+          MKL_NUM_THREADS: "1"
+        run: python benchmarks/benchmark_stable_integrated_fft.py
+
   rust-parity:
     runs-on: ubuntu-latest
     steps:
