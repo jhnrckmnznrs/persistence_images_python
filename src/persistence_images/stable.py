@@ -125,9 +125,9 @@ def stable_persistence_image(
                 cert=select_stable_fft_stencil(mass,bounds,nx,ny,sigma_x,sigma_y,absolute_error)
                 if cert is not None:
                     shape=_shape(nx,ny,cert.width_x,cert.width_y)
-                    fft_work=12*shape[0]*shape[1]*np.log2(shape[0]*shape[1])
+                    fft_work=3*shape[0]*shape[1]*np.log2(shape[0]*shape[1])
                     deposit_work=len(points)*cert.width_x*cert.width_y
-                    if len(points)*nx*ny > 5*(deposit_work+fft_work):
+                    if len(points)*nx*ny > 2*(deposit_work+fft_work):
                         return stable_interp_fft_image(points,bounds,nx,ny,sigma_x,sigma_y,
                             weight_scale=weight_scale,absolute_error=absolute_error)
             except ImportError:
