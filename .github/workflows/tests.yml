@@ -50,7 +50,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: jhnrckmnznrs/persistence_images
-          ref: feat/stable-integrated-fft
+          ref: 031266ee328907908242ae84299cdfdc94f99aa3
           path: rust-reference
       - uses: dtolnay/rust-toolchain@stable
       - uses: actions/setup-python@v5
@@ -68,7 +68,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: jhnrckmnznrs/persistence_images
-          ref: feat/stable-integrated-fft
+          ref: 031266ee328907908242ae84299cdfdc94f99aa3
           path: rust-reference
       - uses: dtolnay/rust-toolchain@stable
       - uses: actions/setup-python@v5
