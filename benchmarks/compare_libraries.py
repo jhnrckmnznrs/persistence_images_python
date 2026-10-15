@@ -124,6 +124,7 @@ def run(n=250,pixels=24,repeats=5,sigma=0.2,scale=0.6,seed=93):
         g=PersistenceImage(
             bandwidth=sigma,weight=lambda point:min(point[1]/scale,1.0),
             resolution=[pixels,pixels],im_range=[0.,1.,0.,1.])
+        g.fit([bd])
         out,elapsed,_=timed(lambda:np.asarray(g.transform([bd])[0]),repeats)
         expected=sampled_reference(points,pixels,sigma,scale)
         error=float(np.max(np.abs(out-expected)))
