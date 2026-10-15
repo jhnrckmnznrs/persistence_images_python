@@ -103,6 +103,20 @@ jobs:
             --engines python:dense,rust:direct,python:shared,rust:shared,python:auto,rust:auto \
             --warmup 1 --repeats 1 --strict \
             --output-dir benchmark-results/stable-quantized
+      - name: Stable large continuous CDF versus integrated FFT
+        run: |
+          python benchmarks/run_suite.py --rust-repo rust-reference \
+            --representation stable --profile full --cases large_continuous \
+            --engines python:dense,rust:direct,python:interp_fft,rust:interp-fft,python:auto,rust:auto \
+            --warmup 1 --repeats 1 --strict \
+            --output-dir benchmark-results/stable-large-continuous
+      - name: Stable large quantized shared CDF versus auto
+        run: |
+          python benchmarks/run_suite.py --rust-repo rust-reference \
+            --representation stable --profile full --cases large_quantized \
+            --engines python:dense,rust:direct,python:shared,rust:shared,python:auto,rust:auto \
+            --warmup 1 --repeats 1 --strict \
+            --output-dir benchmark-results/stable-large-quantized
       - uses: actions/upload-artifact@v4
         if: always()
         with:
