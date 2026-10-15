@@ -72,3 +72,30 @@ python benchmarks/run_suite.py \
 
 See [README.md](README.md) for environment variables, error
 reference scope, and report formats.
+
+
+## Larger 20,000-point validation
+
+A separate [successful benchmark run](https://github.com/jhnrckmnznrs/persistence_images_python/actions/runs/38718397901)
+used the manifest's `large_continuous` and `large_quantized`
+cases, 128 × 128 pixels, five different implementations or dispatches,
+and the same fixed error tolerance. Each result still uses a **single
+warmed timed repetition**; errors are checked at 64 fixed pixels.
+
+| Dataset | Language | Direct ms | Preferred method ms | Auto ms |
+| --- | --- | ---: | ---: | ---: |
+| Continuous | Rust | 277.904 | FFT 5.921 | 5.954 |
+| Continuous | Python | 286.848 | FFT 5.683 | 7.166 |
+| Quantized | Rust | 268.058 | shared CDF 1.168 | 1.176 |
+| Quantized | Python | 263.016 | shared CDF 2.681 | 3.085 |
+
+Maximum sampled absolute error was 6.15e-13 for the approximate
+integrated FFT. The exact shared CDF computation agreed with the direct
+integrals at floating-point precision. The Rust and Python results were
+compared using matching generator fingerprints and sampled pixel indices.
+
+**Limitations:** Single-repetition hosted benchmark times do not establish
+portable speedups or a provably optimal selector. The large-case input
+coordinates are controlled synthetic examples, not real measurements.
+Real persistence-diagram datasets and repeated local hardware benchmarks
+remain essential before publication.
