@@ -112,14 +112,9 @@ def stable_persistence_image(
         )
     if engine == "auto":
         sample = points[:min(1024, len(points))]
-        engine = (
-            "factorized" if len(points) >= 512 and
-            len(np.unique(sample, axis=0)) * 3 <= len(sample) else "dense"
-        )
-    if engine == "dense" and absolute_error is not None:
-        # Direct integration is exact in real arithmetic: an approximation
-        # budget does not force an approximation.
-        pass
+        if len(points) >= 512 and len(np.unique(sample, axis=0))*3 <= len(sample):
+            engine = "factorized"
+        # Otherwise retain auto, to allow certified FFT selection below.
     if engine == "auto" and absolute_error is not None and len(points)>=2000 and nx*ny>=4096:
         inside = (np.all((points[:,0]>=bounds.x_min)&(points[:,0]<=bounds.x_max))
                   and np.all((points[:,1]>=bounds.y_min)&(points[:,1]<=bounds.y_max)))

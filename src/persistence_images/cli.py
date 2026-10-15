@@ -114,7 +114,7 @@ def main(argv: list[str] | None = None) -> int:
         sigma_x=args.sigma_x, sigma_y=args.sigma_y,
         spacings=[sample.voxel_spacing for sample in dataset],
         batch_size=args.batch_size, engine=args.engine,
-        **({"weight_scale": args.weight_scale} if args.representation == "stable" else {"absolute_error": args.absolute_error}),
+        **({"weight_scale": args.weight_scale, "absolute_error": args.absolute_error} if args.representation == "stable" else {"absolute_error": args.absolute_error}),
     )
     save_images_to_csv((sample.path.stem for sample in dataset), images, args.output)
     print(f"Saved to {args.output}")
