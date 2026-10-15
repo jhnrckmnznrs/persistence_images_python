@@ -122,3 +122,24 @@ jobs:
         with:
           name: benchmark-parity-reports
           path: benchmark-results/
+
+  library-comparison:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install -e ".[compare]"
+      - name: Check persim integrated and GUDHI sampled reference parity
+        env:
+          OPENBLAS_NUM_THREADS: "1"
+          OMP_NUM_THREADS: "1"
+          MKL_NUM_THREADS: "1"
+        run: |
+          python benchmarks/compare_libraries.py --n 120 --pixels 16 --repeats 2 \
+            --output benchmarks/results/library-comparison.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: library-comparison-json
+          path: benchmarks/results/library-comparison.json
