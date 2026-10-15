@@ -34,13 +34,13 @@ with tempfile.TemporaryDirectory() as folder:
         path=base/f"rust_{engine}.csv"
         cmd=["cargo","run","--release","--locked","--",*common,
              "--engine",engine,"--output",str(path)]
-        if engine=="interp-fft":cmd+=["--absolute-error","1e-8"]
+        if engine in ("interp-fft","auto"):cmd+=["--absolute-error","1e-8"]
         subprocess.run(cmd,cwd=rust,check=True)
         with path.open(newline="") as f:return list(csv.reader(f))
     truth=run_rust("direct")
     outputs={"python integrated FFT":run_python("interp_fft"),
              "rust integrated FFT":run_rust("interp-fft"),
-             "rust auto FFT":run_rust("auto")}
+             "rust tolerance-aware auto":run_rust("auto")}
     for label,output in outputs.items():
         assert [a[0] for a in output]==[a[0] for a in truth]
         error=max(abs(float(x)-float(y))
