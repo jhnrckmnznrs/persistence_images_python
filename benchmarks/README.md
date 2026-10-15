@@ -45,3 +45,32 @@ Pin compiler/Python and library versions, run on the **same physical machine**,
 and limit BLAS/Numba threads for controlled comparisons. Hosted CI benchmarks
 verify correctness, not credible speedup estimates. Synthetic workloads
 should be supplemented by genuine diagrams.
+
+
+## Stable pixel-integrated comparison
+
+Add `--representation stable` to run identical deterministic workloads with
+**normalized weighted Gaussian pixel integrals** rather than sampled Gaussian
+heights. The stable benchmark uses a fixed persistence ramp scale
+(`--weight-scale 0.7` by default), CDF-based direct reference at all or 64
+deterministic pixel rectangles, the same source fingerprints, per-run Linux
+peak RSS, and median warmed execution times.
+
+```bash
+python benchmarks/run_suite.py --rust-repo ../persistence_images \
+  --representation stable --profile standard --repeats 5 \
+  --output-dir benchmarks/results/stable
+```
+
+Choose explicit algorithms with `--engines
+python:dense,rust:direct,python:interp_fft,rust:interp-fft`.
+Quantized workloads can compare `python:shared,rust:shared`. Very narrow
+kernels may be rejected by the explicit FFT because they cannot satisfy the
+certified interpolation tolerance. `auto` retains exact fallbacks.
+
+These are **synthetic kernel-level** benchmarks. Shared-basis speed depends
+on coordinate multiplicity; integrated FFT speed depends on grid resolution,
+bandwidth, and reuse of its spectrum. Error sampled at 64 pixels is an
+empirical check and must not be confused with the analytical whole-image
+certificates. Compare Rust and Python on the same physical host and
+prefer separate cold-plan and warm-cache measurements for publications.

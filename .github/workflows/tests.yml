@@ -50,7 +50,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: jhnrckmnznrs/persistence_images
-          ref: 5ddf3a3e303c825a4dfc9c64f3173acd04bf974a
+          ref: 031266ee328907908242ae84299cdfdc94f99aa3
           path: rust-reference
       - uses: dtolnay/rust-toolchain@stable
       - uses: actions/setup-python@v5
@@ -68,7 +68,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: jhnrckmnznrs/persistence_images
-          ref: 5ddf3a3e303c825a4dfc9c64f3173acd04bf974a
+          ref: 031266ee328907908242ae84299cdfdc94f99aa3
           path: rust-reference
       - uses: dtolnay/rust-toolchain@stable
       - uses: actions/setup-python@v5
@@ -89,6 +89,34 @@ jobs:
             --engines python:interp_fft,rust:interp-fft \
             --warmup 1 --repeats 1 --strict \
             --output-dir benchmark-results/fft
+      - name: Compare stable integrated FFT engines on medium continuous diagrams
+        run: |
+          python benchmarks/run_suite.py --rust-repo rust-reference \
+            --representation stable --profile standard --cases medium_continuous \
+            --engines python:dense,rust:direct,python:interp_fft,rust:interp-fft,python:auto,rust:auto \
+            --warmup 1 --repeats 1 --strict \
+            --output-dir benchmark-results/stable
+      - name: Compare stable exact CDF reuse on medium quantized diagrams
+        run: |
+          python benchmarks/run_suite.py --rust-repo rust-reference \
+            --representation stable --profile standard --cases medium_quantized \
+            --engines python:dense,rust:direct,python:shared,rust:shared,python:auto,rust:auto \
+            --warmup 1 --repeats 1 --strict \
+            --output-dir benchmark-results/stable-quantized
+      - name: Stable large continuous CDF versus integrated FFT
+        run: |
+          python benchmarks/run_suite.py --rust-repo rust-reference \
+            --representation stable --profile full --cases large_continuous \
+            --engines python:dense,rust:direct,python:interp_fft,rust:interp-fft,python:auto,rust:auto \
+            --warmup 1 --repeats 1 --strict \
+            --output-dir benchmark-results/stable-large-continuous
+      - name: Stable large quantized shared CDF versus auto
+        run: |
+          python benchmarks/run_suite.py --rust-repo rust-reference \
+            --representation stable --profile full --cases large_quantized \
+            --engines python:dense,rust:direct,python:shared,rust:shared,python:auto,rust:auto \
+            --warmup 1 --repeats 1 --strict \
+            --output-dir benchmark-results/stable-large-quantized
       - uses: actions/upload-artifact@v4
         if: always()
         with:

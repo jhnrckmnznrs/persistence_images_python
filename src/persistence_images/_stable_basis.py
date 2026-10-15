@@ -98,7 +98,7 @@ class StableCdfBasis:
 
 
 def _candidate(ds: list[NDArray[np.float64]], nx: int, ny: int) -> bool:
-    if len(ds) < 2 or nx * ny < 256 or sum(len(d) for d in ds) < 512:
+    if not ds or nx * ny < 256 or sum(len(d) for d in ds) < 512:
         return False
     segments = [d[d[:, 1] > 0][:512] for d in ds if len(d)]
     segments = [seg for seg in segments if len(seg)]
