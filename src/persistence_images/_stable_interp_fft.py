@@ -91,7 +91,27 @@ except ImportError:
     njit=None
 
 if njit is not None:
-    from ._interp_fft import _barycentric_weights
+    @njit(cache=True)
+    def _barycentric_weights(q,w,out):
+        start=int(np.floor(q-.5*(w-1)+.5))
+        exact=-1
+        for i in range(w):
+            if q == start+i:
+                exact=i
+        if exact>=0:
+            for i in range(w):
+                out[i]=1. if i==exact else 0.
+            return start
+        total=0.
+        binomial=1.
+        for i in range(w):
+            out[i]=(binomial if i%2==0 else -binomial)/(q-(start+i))
+            total+=out[i]
+            if i+1<w:
+                binomial=binomial*(w-1-i)/(i+1)
+        for i in range(w):
+            out[i]/=total
+        return start
 
     @njit(cache=True)
     def _deposit_weighted(points,scale,wx,wy,padx,pady,mass,xmin,ymin,hx,hy):
