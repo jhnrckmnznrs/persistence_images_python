@@ -87,6 +87,37 @@ claimed for these reference settings.
 The optimized `shared` and `interp_fft` stable engines intentionally
 remain restricted to the original bounded ramp and diagonal covariance.
 
+
+## Exact attribution for frozen linear stable persistence-image models
+
+For a **pixel-integrated** PI with a bounded ramp and fixed grid, the image is
+additive over persistence points. Consequently, a fitted linear prediction
+can be decomposed exactly into point contributions and a transformed intercept.
+This is a predictive explanation, not an intervention on bone or a mechanical
+load-path analysis.
+
+```python
+import numpy as np
+from persistence_images import Bounds, LinearPIModel, explain_linear_pi
+
+diagram = np.array([[-0.8, 0.2], [-0.4, 1.3], [0.1, 0.7]])
+model = LinearPIModel(coef=np.linspace(-1, 1, 12), intercept=3.0,
+                      center=np.zeros(12), scale=2.0)
+result = explain_linear_pi(diagram, Bounds(-2, 2, 0, 2), 3, 4,
+                           sigma_x=0.3, sigma_y=0.3, model=model)
+assert result.reconstruction_error < 1e-9
+print(result.contributions, result.reconstructed_prediction)
+```
+
+Provide the original model's fold-specific grid, feature ordering, intercept,
+training center, scale, coefficients, and bounded-ramp saturation scale.
+Coefficients for inactive features must be padded with zeros. Additional
+model blocks, if any, must be passed explicitly as an additive scalar. The
+implementation shares the stable image's CDF kernel and checks the sum
+against an independent dense stable-image calculation. It currently supports
+**uniform rectangular cell edges** via `Bounds`, `nx` and `ny`; arbitrary
+nonuniform edges and custom Gaussian covariances are not supported.
+
 ## Visualization
 
 With `pip install -e ".[viz]"`, use
