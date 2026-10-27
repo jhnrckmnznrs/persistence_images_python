@@ -118,6 +118,17 @@ against an independent dense stable-image calculation. It currently supports
 **uniform rectangular cell edges** via `Bounds`, `nx` and `ny`; arbitrary
 nonuniform edges and custom Gaussian covariances are not supported.
 
+
+To process a saved fold without fitting a new model, use
+`python examples/explain_saved_fold.py --fold fold.npz --diagram finite_h0.csv --output out/explanation`.
+The fold NPZ stores `birth_edges`, `persistence_edges`, `sigma`, `tau`,
+`coef`, `center`, `scale`, and `intercept`, with optional
+`active`, `expected_prediction`, and `other_blocks_offset`.
+The CSV uses headers `birth,persistence`. The script checks uniform edges
+and saved original predictions, then writes interval contributions and a
+summary JSON. Save the *actual* physical grid edges and held-out-fold model;
+never reconstruct them from the figure labels or aggregate RMSE.
+
 ## Visualization
 
 With `pip install -e ".[viz]"`, use
