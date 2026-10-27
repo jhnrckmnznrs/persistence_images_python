@@ -1,5 +1,6 @@
 """Python implementation of jhnrckmnznrs/persistence_images."""
 
+from .attribution import IntervalExplanation, LinearPIModel, explain_linear_pi
 from .batch import SharedGaussianBasis, batch_persistence_images
 from .stable import stable_persistence_image, stable_batch_images
 from ._stable_basis import StableCdfBasis
@@ -18,6 +19,7 @@ from .io import (
 )
 
 __all__ = [
+    "IntervalExplanation", "LinearPIModel", "explain_linear_pi",
     "PersistenceImageTransformer", "flexible_persistence_image", "persistence_weights", "plot_diagram", "plot_image",
     "Bounds", "SharedGaussianBasis", "batch_persistence_images", "SpacingDiagram", "apply_spacing", "collect_csv_files",
     "compute_bounds", "load_dataset", "load_spacing", "persistence_image",
